@@ -66,6 +66,33 @@ export class ShippingController {
     return this.service.findById(id);
   }
 
+  /** Ocupacion volumetrica (% CBM y % Kg) y desglose de items asignados. */
+  @Get('containers/:id/occupancy')
+  @RequirePermission('IMPORTCORE.CONTAINERS.READ')
+  occupancy(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.occupancy(id);
+  }
+
+  /**
+   * Sincroniza rastreo en tiempo real (17TRACK / Naviera / Mock)
+   * y propaga eventos al contenedor y a sus pedidos asignados.
+   */
+  @Post('containers/:id/track')
+  @RequirePermission('IMPORTCORE.CONTAINERS.WRITE')
+  async track(@Param('id', ParseUUIDPipe) id: string) {
+    const { container, tracking } = await this.service.syncTracking(id);
+    const reminders =
+      container.status === 'ARRIVED'
+        ? await this.reminders.execute(new Date(), [container.id])
+        : { sent: 0 };
+
+    return {
+      container,
+      tracking,
+      remindersSent: reminders.sent,
+    };
+  }
+
   /** Incluye estimado de demurrage en la respuesta. */
   @Get('containers/:id/demurrage')
   @RequirePermission('IMPORTCORE.CONTAINERS.READ')

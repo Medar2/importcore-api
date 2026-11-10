@@ -63,6 +63,13 @@ export class OrdersController {
     return this.orders.balance(id);
   }
 
+  /** Tracking del pedido y estado de liberación aduanal para el cliente. */
+  @Get(':id/tracking')
+  @RequirePermission('IMPORTCORE.ORDERS.READ')
+  tracking(@Param('id', ParseUUIDPipe) id: string) {
+    return this.orders.tracking(id);
+  }
+
   @Patch(':id/status')
   @RequirePermission('IMPORTCORE.ORDERS.WRITE')
   setStatus(

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -18,6 +19,16 @@ import {
   OptimizeLoadDto,
   UpdateContainerDto,
 } from '../../presentation/dtos/shipping.dto';
+import {
+  computeContainerOccupancy,
+  ContainerOccupancyResult,
+  OccupantInputItem,
+} from '../../domain/container-occupancy.calculator';
+import type {
+  ContainerTrackingProvider,
+  TrackingResult,
+} from '../../domain/tracking-provider.interface';
+import { ContainerOrdersSyncService } from './container-orders-sync.service';
 
 export interface ContainerAvailability {
   id: string;
@@ -41,6 +52,9 @@ export class ShippingService {
     private readonly quotes: Repository<Quote>,
     @InjectRepository(Order)
     private readonly orders: Repository<Order>,
+    @Inject('TRACKING_PROVIDER')
+    private readonly trackingProvider: ContainerTrackingProvider,
+    private readonly ordersSync: ContainerOrdersSyncService,
   ) {}
 
   async create(dto: CreateContainerDto): Promise<ShipmentContainer> {
@@ -92,6 +106,115 @@ export class ShippingService {
       notes: dto.notes ?? c.notes,
     });
     return this.repo.save(c);
+  }
+
+  /**
+   * Desglose completo de ocupación (% CBM, % Peso, items asignados)
+   * de un contenedor para visualización del gestor y del cliente.
+   */
+  async occupancy(
+    id: string,
+  ): Promise<
+    ContainerOccupancyResult & {
+      containerId: string;
+      containerNumber: string;
+      status: string;
+    }
+  > {
+    const c = await this.findById(id);
+
+    const [quotes, orders] = await Promise.all([
+      this.quotes.find({
+        where: { containerId: c.id },
+        relations: ['customer'],
+      }),
+      this.orders.find({
+        where: { containerId: c.id },
+        relations: ['customer', 'quote'],
+      }),
+    ]);
+
+    const activeQuoteStatuses = new Set(['DRAFT', 'SENT', 'ACCEPTED']);
+    const excludedOrderStatuses = new Set(['CANCELLED', 'DISPATCHED']);
+    const items: OccupantInputItem[] = [];
+
+    for (const q of quotes) {
+      if (!activeQuoteStatuses.has(q.status)) continue;
+      const totals = q.calculationResult?.totals;
+      items.push({
+        id: q.id,
+        type: 'QUOTE',
+        reference: q.quoteNumber,
+        customerId: q.customerId,
+        customerName: q.customer?.name ?? q.customerName ?? 'Cliente',
+        status: q.status,
+        cbm: totals?.cbm ?? 0,
+        weightKg: totals?.weightKg ?? 0,
+      });
+    }
+
+    for (const o of orders) {
+      if (excludedOrderStatuses.has(o.status)) continue;
+      let cbm = 0;
+      let weightKg = 0;
+      if (o.quote?.calculationResult?.totals) {
+        cbm = Number(o.quote.calculationResult.totals.cbm ?? 0);
+        weightKg = Number(o.quote.calculationResult.totals.weightKg ?? 0);
+      } else if (Array.isArray(o.itemsSnapshot)) {
+        for (const it of o.itemsSnapshot as Array<{
+          cbm?: number | string;
+          weightKg?: number | string;
+        }>) {
+          cbm += Number(it.cbm ?? 0);
+          weightKg += Number(it.weightKg ?? 0);
+        }
+      }
+      items.push({
+        id: o.id,
+        type: 'ORDER',
+        reference: o.orderNumber,
+        customerId: o.customerId,
+        customerName: o.customer?.name ?? 'Cliente',
+        status: o.status,
+        cbm,
+        weightKg,
+      });
+    }
+
+    const calc = computeContainerOccupancy(c.containerType, items);
+
+    return {
+      containerId: c.id,
+      containerNumber: c.containerNumber,
+      status: c.status,
+      ...calc,
+    };
+  }
+
+  /**
+   * Sincroniza el rastreo marítimo en tiempo real desde la API del transportista
+   * (o Mock para desarrollo) y propaga el estado a los pedidos vinculados.
+   */
+  async syncTracking(id: string): Promise<{
+    container: ShipmentContainer;
+    tracking: TrackingResult;
+  }> {
+    const c = await this.findById(id);
+    const tracking = await this.trackingProvider.track(
+      c.containerNumber,
+      c.blNumber ?? c.notes,
+    );
+
+    c.status = tracking.status;
+    if (tracking.etd) c.etd = tracking.etd;
+    if (tracking.eta) c.eta = tracking.eta;
+    if (tracking.ata) c.ata = tracking.ata;
+    const saved = await this.repo.save(c);
+
+    // Propagar automáticamente a los pedidos asignados
+    await this.ordersSync.sync(saved);
+
+    return { container: saved, tracking };
   }
 
   /**
