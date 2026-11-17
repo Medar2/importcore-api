@@ -21,6 +21,8 @@ import { LoginDto } from '../dto/login.dto';
 import { VerifyMFADto, DisableMFADto } from '../dto/mfa.dto';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { SessionResponseDto } from '../dto/session.dto';
+import { ForgotPasswordDto } from '../dto/forgot-password.dto';
+import { ResetPasswordDto } from '../dto/reset-password.dto';
 import { SessionInfo } from '../interfaces/session-info.interface';
 
 @Controller('auth')
@@ -149,8 +151,8 @@ export class AuthController {
   @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
-  async forgotPassword(@Body('email') email: string) {
-    return this.authService.forgotPassword(email);
+  async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(forgotPasswordDto.email);
   }
 
   /**
@@ -160,11 +162,11 @@ export class AuthController {
   @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
-  async resetPassword(
-    @Body('token') token: string,
-    @Body('newPassword') newPassword: string,
-  ) {
-    return this.authService.resetPassword(token, newPassword);
+  async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    return this.authService.resetPassword(
+      resetPasswordDto.token,
+      resetPasswordDto.newPassword,
+    );
   }
 
   /**

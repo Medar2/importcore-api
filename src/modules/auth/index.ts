@@ -24,6 +24,8 @@ export * from './dto/login.dto';
 export * from './dto/mfa.dto';
 export * from './dto/refresh-token.dto';
 export * from './dto/session.dto';
+export * from './dto/forgot-password.dto';
+export * from './dto/reset-password.dto';
 
 // Interfaces
 export * from './interfaces/token-payload.interface';

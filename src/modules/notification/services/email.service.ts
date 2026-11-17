@@ -92,48 +92,224 @@ export class EmailService {
     resetToken: string,
     userName?: string,
   ): Promise<void> {
-    const baseUrl =
+    const rawBaseUrl =
       this.configService.get('FRONTEND_URL') ||
       this.configService.get('APP_URL') ||
       'http://localhost:3000';
-    const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+    const baseUrl = rawBaseUrl.replace(/\\/g, '/').replace(/\/+$/, '');
+    const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
+    const companyName =
+      this.configService.get('COMPANY_NAME') || 'ImportCore RD';
+    const currentYear = new Date().getFullYear();
 
     const html = `
       <!DOCTYPE html>
       <html lang="es">
-      <head><meta charset="UTF-8"><title>Restablecer Contraseña</title></head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc; padding: 24px; color: #1e293b;">
-        <div style="max-width: 540px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-          <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #ffffff; padding: 24px; text-align: center;">
-            <h2 style="margin: 0; font-size: 20px; font-weight: 700;">Restablecimiento de Contraseña</h2>
-            <p style="margin: 4px 0 0; font-size: 13px; color: #94a3b8;">Sistema de Gestión RBAC & Facturación</p>
-          </div>
-          <div style="padding: 28px 24px;">
-            <p style="margin: 0 0 16px; font-size: 15px;">Hola <strong>${userName || 'Usuario'}</strong>,</p>
-            <p style="margin: 0 0 20px; font-size: 14px; color: #475569; line-height: 1.5;">
-              Hemos recibido una solicitud para restablecer la contraseña de acceso a tu cuenta. Para definir una nueva contraseña, haz clic en el siguiente botón:
-            </p>
-            <div style="text-align: center; margin: 28px 0;">
-              <a href="${resetUrl}" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; box-shadow: 0 2px 4px rgba(37,99,235,0.2);">
-                Restablecer mi Contraseña
-              </a>
-            </div>
-            <p style="margin: 0 0 12px; font-size: 12px; color: #64748b;">
-              ⏱️ <em>Este enlace es válido durante 2 horas. Si no solicitaste este cambio, puedes ignorar este mensaje de forma segura.</em>
-            </p>
-            <div style="border-top: 1px solid #f1f5f9; padding-top: 16px; margin-top: 20px; font-size: 11px; color: #94a3b8; word-break: break-all;">
-              Si el botón no funciona, copia y pega el siguiente enlace en tu navegador:<br>
-              <a href="${resetUrl}" style="color: #2563eb;">${resetUrl}</a>
-            </div>
-          </div>
-        </div>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Restablecer Contraseña - ${companyName}</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f4f7fb; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f1e33;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f4f7fb; padding: 32px 16px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 560px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 45, 98, 0.08), 0 8px 10px -6px rgba(0, 45, 98, 0.05); border: 1px solid #dbe4f0;">
+                <!-- Header -->
+                <tr>
+                  <td style="background: linear-gradient(135deg, #002d62 0%, #0a192f 100%); padding: 36px 32px; text-align: center;">
+                    <div style="display: inline-block; background-color: rgba(255, 255, 255, 0.12); padding: 10px; border-radius: 12px; margin-bottom: 12px;">
+                      <span style="font-size: 28px; line-height: 1;">🔐</span>
+                    </div>
+                    <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 700; letter-spacing: -0.02em;">${companyName}</h1>
+                    <p style="margin: 6px 0 0 0; color: #94a3b8; font-size: 13px; font-weight: 400; letter-spacing: 0.05em; text-transform: uppercase;">Seguridad y Control de Acceso</p>
+                  </td>
+                </tr>
+
+                <!-- Content -->
+                <tr>
+                  <td style="padding: 36px 32px;">
+                    <h2 style="margin: 0 0 16px 0; color: #0f1e33; font-size: 18px; font-weight: 600;">Restablecimiento de Contraseña</h2>
+                    <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
+                      Hola <strong>${userName || 'Usuario'}</strong>,
+                    </p>
+                    <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: #475569;">
+                      Hemos recibido una solicitud para restablecer la contraseña de acceso asociada a tu cuenta. Para elegir una nueva contraseña y recuperar tu acceso, haz clic en el siguiente botón:
+                    </p>
+
+                    <!-- CTA Button -->
+                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 28px 0;">
+                      <tr>
+                        <td align="center">
+                          <a href="${resetUrl}" target="_blank" style="display: inline-block; background-color: #002d62; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 600; padding: 14px 36px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0, 45, 98, 0.25); border: 1px solid #002d62;">
+                            Restablecer mi Contraseña
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Details Card -->
+                    <div style="background-color: #f8fafc; border-radius: 10px; padding: 16px 20px; border-left: 4px solid #0057b8; margin: 24px 0;">
+                      <p style="margin: 0 0 6px 0; font-size: 13px; color: #1e293b; font-weight: 600;">
+                        ⏱️ Validez del enlace: 2 horas
+                      </p>
+                      <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.5;">
+                        Por tu seguridad, este enlace expirará automáticamente. Si no solicitaste este cambio, puedes ignorar este mensaje; tu contraseña actual continuará siendo segura.
+                      </p>
+                    </div>
+
+                    <!-- Direct Link Fallback -->
+                    <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+                      <p style="margin: 0 0 8px 0; font-size: 12px; color: #64748b;">
+                        ¿El botón no responde? Copia y pega la siguiente URL en tu navegador:
+                      </p>
+                      <p style="margin: 0; font-size: 12px; line-height: 1.4; word-break: break-all;">
+                        <a href="${resetUrl}" style="color: #0057b8; text-decoration: underline;">${resetUrl}</a>
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                  <td style="background-color: #f8fafc; padding: 24px 32px; text-align: center; border-top: 1px solid #dbe4f0;">
+                    <p style="margin: 0 0 6px 0; font-size: 12px; color: #64748b; font-weight: 500;">
+                      © ${currentYear} ${companyName} — Todos los derechos reservados.
+                    </p>
+                    <p style="margin: 0; font-size: 11px; color: #94a3b8;">
+                      Este es un correo electrónico automatizado enviado por el sistema de seguridad. Por favor no respondas a este remitente.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
       </body>
       </html>
     `;
 
     await this.sendEmail(
       to,
-      '🔐 Restablecimiento de Contraseña - Sistema RBAC',
+      `🔐 Restablecer contraseña — ${companyName}`,
+      html,
+    );
+  }
+
+  /**
+   * Envía confirmación de que la contraseña ha sido cambiada exitosamente
+   */
+  async sendPasswordChangedConfirmationEmail(
+    to: string,
+    userName?: string,
+  ): Promise<void> {
+    const rawBaseUrl =
+      this.configService.get('FRONTEND_URL') ||
+      this.configService.get('APP_URL') ||
+      'http://localhost:3000';
+    const baseUrl = rawBaseUrl.replace(/\\/g, '/').replace(/\/+$/, '');
+    const loginUrl = `${baseUrl}/login`;
+    const companyName =
+      this.configService.get('COMPANY_NAME') || 'ImportCore RD';
+    const currentYear = new Date().getFullYear();
+    const formattedDate = new Date().toLocaleString('es-DO', {
+      dateStyle: 'full',
+      timeStyle: 'short',
+    });
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Contraseña Actualizada - ${companyName}</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f4f7fb; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f1e33;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f4f7fb; padding: 32px 16px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 560px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 45, 98, 0.08), 0 8px 10px -6px rgba(0, 45, 98, 0.05); border: 1px solid #dbe4f0;">
+                <!-- Header -->
+                <tr>
+                  <td style="background: linear-gradient(135deg, #002d62 0%, #0a192f 100%); padding: 36px 32px; text-align: center;">
+                    <div style="display: inline-block; background-color: rgba(34, 197, 94, 0.2); padding: 10px; border-radius: 12px; margin-bottom: 12px; border: 1px solid rgba(34, 197, 94, 0.4);">
+                      <span style="font-size: 28px; line-height: 1;">✅</span>
+                    </div>
+                    <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 700; letter-spacing: -0.02em;">${companyName}</h1>
+                    <p style="margin: 6px 0 0 0; color: #94a3b8; font-size: 13px; font-weight: 400; letter-spacing: 0.05em; text-transform: uppercase;">Notificación de Seguridad</p>
+                  </td>
+                </tr>
+
+                <!-- Content -->
+                <tr>
+                  <td style="padding: 36px 32px;">
+                    <h2 style="margin: 0 0 16px 0; color: #0f1e33; font-size: 18px; font-weight: 600;">Contraseña Actualizada con Éxito</h2>
+                    <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
+                      Hola <strong>${userName || 'Usuario'}</strong>,
+                    </p>
+                    <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.6; color: #475569;">
+                      Te confirmamos que la contraseña de tu cuenta en <strong>${companyName}</strong> ha sido restablecida y actualizada correctamente.
+                    </p>
+
+                    <!-- Info Box -->
+                    <div style="background-color: #f0fdf4; border-radius: 10px; padding: 16px 20px; border-left: 4px solid #16a34a; margin: 20px 0;">
+                      <p style="margin: 0 0 6px 0; font-size: 13px; color: #166534; font-weight: 600;">
+                        ✓ Acción confirmada
+                      </p>
+                      <p style="margin: 0; font-size: 13px; color: #15803d; line-height: 1.5;">
+                        <strong>Fecha del cambio:</strong> ${formattedDate}
+                      </p>
+                    </div>
+
+                    <!-- Security Alert Box -->
+                    <div style="background-color: #fff7ed; border-radius: 10px; padding: 16px 20px; border-left: 4px solid #ea580c; margin: 20px 0;">
+                      <p style="margin: 0 0 6px 0; font-size: 13px; color: #9a3412; font-weight: 600;">
+                        🛡️ Medidas de seguridad aplicadas
+                      </p>
+                      <p style="margin: 0; font-size: 13px; color: #c2410c; line-height: 1.5;">
+                        Por precaución, todas las sesiones abiertas en tus dispositivos anteriores han sido finalizadas. Si tú realizaste este cambio, puedes iniciar sesión nuevamente con tu nueva clave.
+                      </p>
+                      <p style="margin: 10px 0 0 0; font-size: 12px; color: #b45309; line-height: 1.4;">
+                        <strong>¿No reconoces esta actividad?</strong> Si no realizaste este cambio, ponte en contacto inmediato con el administrador del sistema para proteger tu cuenta.
+                      </p>
+                    </div>
+
+                    <!-- CTA Button -->
+                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 28px 0 10px 0;">
+                      <tr>
+                        <td align="center">
+                          <a href="${loginUrl}" target="_blank" style="display: inline-block; background-color: #002d62; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 600; padding: 14px 36px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0, 45, 98, 0.25); border: 1px solid #002d62;">
+                            Iniciar Sesión en ImportCore
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                  <td style="background-color: #f8fafc; padding: 24px 32px; text-align: center; border-top: 1px solid #dbe4f0;">
+                    <p style="margin: 0 0 6px 0; font-size: 12px; color: #64748b; font-weight: 500;">
+                      © ${currentYear} ${companyName} — Todos los derechos reservados.
+                    </p>
+                    <p style="margin: 0; font-size: 11px; color: #94a3b8;">
+                      Este es un correo automatizado de seguridad. Por favor no respondas a este mensaje.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    await this.sendEmail(
+      to,
+      `✅ Contraseña actualizada exitosamente — ${companyName}`,
       html,
     );
   }
@@ -172,8 +348,9 @@ export class EmailService {
         this.configService.get('SMTP_PASS');
       const from =
         (await repo.findOne({ where: { key: 'EMAIL.FROM' } }))?.value ||
+        this.configService.get('SMTP_FROM') ||
         this.configService.get('EMAIL_FROM') ||
-        'noreply@security.local';
+        'noreply@importcore.local';
       const secureRaw =
         (await repo.findOne({ where: { key: 'EMAIL.SECURE' } }))?.value ||
         'false';
@@ -197,7 +374,10 @@ export class EmailService {
         port: parseInt(this.configService.get('SMTP_PORT') || '587', 10),
         user: this.configService.get('SMTP_USER'),
         pass: this.configService.get('SMTP_PASS'),
-        from: this.configService.get('EMAIL_FROM') || 'noreply@security.local',
+        from:
+          this.configService.get('SMTP_FROM') ||
+          this.configService.get('EMAIL_FROM') ||
+          'noreply@importcore.local',
         secure: false,
         enabled: this.configService.get('EMAIL_ENABLED') === 'true',
       };

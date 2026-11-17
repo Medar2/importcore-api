@@ -435,8 +435,8 @@ export class AuthService {
       relations: ['person'],
     });
 
-    if (!user) {
-      // Por seguridad, retornamos éxito aunque no exista el email
+    if (!user || user.status !== 'active') {
+      // Por seguridad, retornamos éxito genérico aunque no exista o esté inactivo
       return {
         success: true,
         message:
@@ -486,10 +486,15 @@ export class AuthService {
 
     const user = await this.userRepository.findOne({
       where: { id: payload.userId },
+      relations: ['person'],
     });
 
     if (!user) {
       throw new NotFoundException('Usuario no encontrado');
+    }
+
+    if (user.status !== 'active') {
+      throw new UnauthorizedException('La cuenta de usuario está inactiva');
     }
 
     const salt = await bcrypt.genSalt();
@@ -498,6 +503,20 @@ export class AuthService {
 
     // Cerrar todas las sesiones activas anteriores por seguridad
     await this.sessionService.closeAllSessions(user.id);
+
+    // Enviar confirmación por correo electrónico
+    const targetEmail = user.person?.email || payload.email;
+    if (targetEmail) {
+      const userName =
+        [user.person?.firstName, user.person?.lastName]
+          .filter(Boolean)
+          .join(' ') || user.username;
+
+      await this.emailService.sendPasswordChangedConfirmationEmail(
+        targetEmail,
+        userName,
+      );
+    }
 
     return {
       success: true,

@@ -394,7 +394,19 @@ export class UsersService {
     const user = await this.findOne(id);
     const salt = await bcrypt.genSalt();
     user.passwordHash = await bcrypt.hash(newPassword, salt);
-    await this.userRepository.save(user);
+    const saved = await this.userRepository.save(user);
+
+    const targetEmail = user.person?.email;
+    if (targetEmail) {
+      const userName =
+        [user.person?.firstName, user.person?.lastName]
+          .filter(Boolean)
+          .join(' ') || user.username;
+      await this.emailService.sendPasswordChangedConfirmationEmail(
+        targetEmail,
+        userName,
+      );
+    }
 
     if (actor) {
       await this.auditService.logAccess({
