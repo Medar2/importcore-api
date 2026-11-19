@@ -1,4 +1,6 @@
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsInt,
   IsNotEmpty,
@@ -54,6 +56,13 @@ export class CreateProductDto {
   @IsOptional()
   @IsNotEmpty()
   unitFobPriceUsd?: DecimalInput;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsString({ each: true })
+  @MaxLength(500, { each: true })
+  imageUrls?: string[];
 }
 
 export class UpdateProductDto {
@@ -99,6 +108,13 @@ export class UpdateProductDto {
   @IsOptional()
   @IsNotEmpty()
   unitFobPriceUsd?: DecimalInput;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsString({ each: true })
+  @MaxLength(500, { each: true })
+  imageUrls?: string[];
 
   @IsOptional()
   @IsBoolean()
