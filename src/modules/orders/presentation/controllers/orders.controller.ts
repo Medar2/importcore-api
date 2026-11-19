@@ -47,8 +47,18 @@ export class OrdersController {
 
   @Get()
   @RequirePermission('IMPORTCORE.ORDERS.READ')
-  findAll(@Query('status') status?: OrderStatus): Promise<Order[]> {
-    return this.orders.findAll(status);
+  findAll(
+    @Query('status') status?: OrderStatus,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    return this.orders.findAll({
+      status,
+      search,
+      page: page ? Number(page) : undefined,
+      pageSize: pageSize ? Number(pageSize) : undefined,
+    });
   }
 
   @Get(':id')

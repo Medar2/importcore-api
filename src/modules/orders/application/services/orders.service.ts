@@ -19,6 +19,20 @@ import { convertToUsd } from '../../../currency/domain/convert-to-usd';
 
 export type { OrderBalance };
 
+export interface OrderListQuery {
+  status?: string;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface OrderPage {
+  items: Order[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface OrderTrackingResult {
   orderId: string;
   orderNumber: string;
@@ -105,12 +119,30 @@ export class OrdersService {
     return this.orders.save(order);
   }
 
-  async findAll(status?: string): Promise<Order[]> {
-    return this.orders.find({
-      where: status ? { status: status as Order['status'] } : {},
-      relations: ['customer'],
-      order: { createdAt: 'DESC' },
-    });
+  async findAll(query: OrderListQuery = {}): Promise<OrderPage> {
+    const page = Math.max(1, Math.floor(query.page ?? 1) || 1);
+    const pageSize = Math.min(100, Math.max(1, Math.floor(query.pageSize ?? 20) || 20));
+
+    const qb = this.orders
+      .createQueryBuilder('o')
+      .leftJoinAndSelect('o.customer', 'c')
+      .orderBy('o.createdAt', 'DESC');
+
+    if (query.status) {
+      qb.andWhere('o.status = :status', { status: query.status });
+    }
+
+    const term = query.search?.trim();
+    if (term) {
+      qb.andWhere(
+        '(o.orderNumber ILIKE :term OR o.notes ILIKE :term OR c.name ILIKE :term OR c.taxId ILIKE :term)',
+        { term: `%${term}%` },
+      );
+    }
+
+    qb.skip((page - 1) * pageSize).take(pageSize);
+    const [items, total] = await qb.getManyAndCount();
+    return { items, total, page, pageSize };
   }
 
   async findById(id: string): Promise<Order> {
