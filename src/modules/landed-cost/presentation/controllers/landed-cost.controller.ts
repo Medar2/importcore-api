@@ -53,14 +53,18 @@ export class LandedCostController {
 
   @Get()
   @RequirePermission('IMPORTCORE.QUOTES.READ')
-  findAll(@Query('status') status?: QuoteStatus): Promise<Quote[]> {
-    return this.queries.findAll(status);
+  findAll(
+    @Query('status') status?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    return this.queries.findPage({ status, page, pageSize });
   }
 
   @Get(':id')
   @RequirePermission('IMPORTCORE.QUOTES.READ')
-  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Quote> {
-    return this.queries.findById(id);
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.queries.findDetail(id);
   }
 
   /** Descarga el PDF de la cotizacion. */
