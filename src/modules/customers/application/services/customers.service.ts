@@ -50,6 +50,29 @@ export class CustomersService {
     });
   }
 
+  async findPage(
+    activeOnly: boolean,
+    query: { search?: string; page?: number; pageSize?: number } = {},
+  ): Promise<{ items: Customer[]; total: number; page: number; pageSize: number }> {
+    const page = Math.max(1, Math.floor(query.page ?? 1) || 1);
+    const pageSize = Math.min(100, Math.max(1, Math.floor(query.pageSize ?? 20) || 20));
+
+    const qb = this.repo.createQueryBuilder('c').orderBy('c.name', 'ASC');
+    if (activeOnly) qb.andWhere('c.isActive = true');
+
+    const term = query.search?.trim();
+    if (term) {
+      qb.andWhere(
+        '(c.name ILIKE :term OR c.taxId ILIKE :term OR c.email ILIKE :term OR c.phone ILIKE :term)',
+        { term: `%${term}%` },
+      );
+    }
+
+    qb.skip((page - 1) * pageSize).take(pageSize);
+    const [items, total] = await qb.getManyAndCount();
+    return { items, total, page, pageSize };
+  }
+
   async findById(id: string): Promise<Customer> {
     const c = await this.repo.findOne({ where: { id } });
     if (!c) throw new NotFoundException('Cliente no encontrado');

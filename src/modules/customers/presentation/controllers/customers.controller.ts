@@ -36,8 +36,21 @@ export class CustomersController {
 
   @Get()
   @RequirePermission('IMPORTCORE.CUSTOMERS.READ')
-  findAll(@Query('all') all?: string): Promise<Customer[]> {
-    return this.service.findAll(all !== 'true');
+  findAll(
+    @Query('all') all?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    const activeOnly = all !== 'true';
+    if (search !== undefined || page !== undefined || pageSize !== undefined) {
+      return this.service.findPage(activeOnly, {
+        search,
+        page: page ? Number(page) : undefined,
+        pageSize: pageSize ? Number(pageSize) : undefined,
+      });
+    }
+    return this.service.findAll(activeOnly);
   }
 
   @Get(':id')
