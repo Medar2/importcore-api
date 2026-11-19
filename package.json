@@ -25,6 +25,7 @@
     "migration:run": "npm run typeorm -- migration:run -d src/database/data-source.ts",
     "migration:run:prod": "node --max-old-space-size=384 node_modules/typeorm/cli.js migration:run -d dist/database/data-source.js",
     "migration:revert": "npm run typeorm -- migration:revert -d src/database/data-source.ts",
+    "seed": "ts-node -r tsconfig-paths/register scripts/run-seeder.ts",
     "seed:admin": "ts-node -r tsconfig-paths/register scripts/run-seeder.ts"
   },
   "dependencies": {
