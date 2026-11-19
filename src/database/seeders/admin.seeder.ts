@@ -598,6 +598,111 @@ export class AdminSeeder {
         ],
         readOnly: true,
       },
+      // Perfiles de negocio recomendados (fase 3). Se pueden ajustar desde
+      // Admin > Roles; el backend sigue siendo la autoridad final.
+      {
+        name: 'Gerencia',
+        description:
+          'Solo lectura de operación, catálogo, logística, fiscal y auditoría',
+        permissionPrefixes: [
+          'IMPORTCORE.',
+          'REPORTES.',
+          'ADMINISTRACION.AUDITORIA.',
+        ],
+        readOnly: true,
+      },
+      {
+        name: 'Ventas',
+        description:
+          'Cotizaciones completas, clientes y consulta de catálogo/tasas',
+        permissionCodes: [
+          'IMPORTCORE.QUOTES.CREATE',
+          'IMPORTCORE.QUOTES.READ',
+          'IMPORTCORE.QUOTES.UPDATE',
+          'IMPORTCORE.QUOTES.PDF',
+          'IMPORTCORE.CUSTOMERS.READ',
+          'IMPORTCORE.CUSTOMERS.WRITE',
+          'IMPORTCORE.PRODUCTS.READ',
+          'IMPORTCORE.VENDORS.READ',
+          'IMPORTCORE.EXCHANGE_RATES.READ',
+        ],
+      },
+      {
+        name: 'Operaciones',
+        description:
+          'Pedidos, despacho, contenedores, cotizaciones y catálogos de consulta',
+        permissionCodes: [
+          'IMPORTCORE.QUOTES.READ',
+          'IMPORTCORE.QUOTES.UPDATE',
+          'IMPORTCORE.QUOTES.PDF',
+          'IMPORTCORE.ORDERS.READ',
+          'IMPORTCORE.ORDERS.WRITE',
+          'IMPORTCORE.ORDERS.REGISTER_PAYMENT',
+          'IMPORTCORE.ORDERS.AUTHORIZE_DISPATCH',
+          'IMPORTCORE.CONTAINERS.READ',
+          'IMPORTCORE.CONTAINERS.WRITE',
+          'IMPORTCORE.CUSTOMERS.READ',
+          'IMPORTCORE.PRODUCTS.READ',
+          'IMPORTCORE.VENDORS.READ',
+          'IMPORTCORE.PURCHASES.READ',
+          'IMPORTCORE.EXCHANGE_RATES.READ',
+        ],
+      },
+      {
+        name: 'Compras',
+        description:
+          'Órdenes de compra, proveedores, productos y logística de contenedores',
+        permissionCodes: [
+          'IMPORTCORE.PURCHASES.READ',
+          'IMPORTCORE.PURCHASES.WRITE',
+          'IMPORTCORE.PURCHASES.REGISTER_PAYMENT',
+          'IMPORTCORE.VENDORS.READ',
+          'IMPORTCORE.VENDORS.WRITE',
+          'IMPORTCORE.PRODUCTS.READ',
+          'IMPORTCORE.PRODUCTS.WRITE',
+          'IMPORTCORE.CONTAINERS.READ',
+          'IMPORTCORE.CONTAINERS.WRITE',
+          'IMPORTCORE.CUSTOMERS.READ',
+          'IMPORTCORE.EXCHANGE_RATES.READ',
+        ],
+      },
+      {
+        name: 'Contabilidad',
+        description:
+          'CxC/CxP, fiscal e-CF/DGII, tasas de cambio y reportes',
+        permissionCodes: [
+          'IMPORTCORE.QUOTES.READ',
+          'IMPORTCORE.QUOTES.PDF',
+          'IMPORTCORE.ORDERS.READ',
+          'IMPORTCORE.ORDERS.REGISTER_PAYMENT',
+          'IMPORTCORE.PURCHASES.READ',
+          'IMPORTCORE.PURCHASES.REGISTER_PAYMENT',
+          'IMPORTCORE.FISCAL.READ',
+          'IMPORTCORE.FISCAL.EMIT_ECF',
+          'IMPORTCORE.FISCAL.MANAGE',
+          'IMPORTCORE.EXCHANGE_RATES.READ',
+          'IMPORTCORE.EXCHANGE_RATES.MANAGE',
+          'IMPORTCORE.CUSTOMERS.READ',
+          'IMPORTCORE.PRODUCTS.READ',
+          'IMPORTCORE.VENDORS.READ',
+          'REPORTES.USUARIOS.VER',
+          'REPORTES.ACTIVIDAD.VER',
+          'ADMINISTRACION.AUDITORIA.VER',
+        ],
+      },
+      {
+        name: 'Catalogo',
+        description:
+          'Mantenimiento de clientes, productos y proveedores',
+        permissionCodes: [
+          'IMPORTCORE.CUSTOMERS.READ',
+          'IMPORTCORE.CUSTOMERS.WRITE',
+          'IMPORTCORE.PRODUCTS.READ',
+          'IMPORTCORE.PRODUCTS.WRITE',
+          'IMPORTCORE.VENDORS.READ',
+          'IMPORTCORE.VENDORS.WRITE',
+        ],
+      },
     ];
 
     for (const roleData of importCoreRolesData) {

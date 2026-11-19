@@ -8,13 +8,16 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFiles,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../../rbac/guards/permissions.guard';
 import { RequirePermission } from '../../../rbac/decorators/require-permission.decorator';
-import { ProductsService } from '../../application/services/products.service';
+import { ProductDetail, ProductsService } from '../../application/services/products.service';
 import {
   CreateProductDto,
   UpdateProductDto,
@@ -42,8 +45,8 @@ export class ProductsController {
 
   @Get(':id')
   @RequirePermission('IMPORTCORE.PRODUCTS.READ')
-  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Product> {
-    return this.service.findById(id);
+  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<ProductDetail> {
+    return this.service.findDetailById(id);
   }
 
   @Patch(':id')
@@ -51,8 +54,37 @@ export class ProductsController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateProductDto,
-  ): Promise<Product> {
+  ): Promise<ProductDetail> {
     return this.service.update(id, dto);
+  }
+
+  @Post(':id/images')
+  @RequirePermission('IMPORTCORE.PRODUCTS.WRITE')
+  @UseInterceptors(
+    FilesInterceptor('files', 10, {
+      limits: { fileSize: 5 * 1024 * 1024 },
+    }),
+  )
+  uploadImages(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFiles()
+    files: Array<{
+      originalname: string;
+      mimetype: string;
+      buffer: Buffer;
+      size: number;
+    }>,
+  ): Promise<ProductDetail> {
+    return this.service.addImages(
+      id,
+      (files ?? []).map((file) => ({
+        buffer: file.buffer,
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        size: file.size,
+        folder: 'products',
+      })),
+    );
   }
 
   @Delete(':id')

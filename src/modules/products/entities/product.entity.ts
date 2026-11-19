@@ -62,6 +62,10 @@ export class Product extends BaseEntity {
   @Column({ name: 'unit_fob_price_usd', type: 'decimal', precision: 14, scale: 4, nullable: true })
   unitFobPriceUsd: string | null;
 
+  /** URLs publicas de imagenes del producto (galeria estilo catalogo). */
+  @Column({ name: 'image_urls', type: 'jsonb', default: [] })
+  imageUrls: string[];
+
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
 }
