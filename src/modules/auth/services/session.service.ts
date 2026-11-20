@@ -11,6 +11,11 @@ import { User } from '../../security/entities/user.entity';
 import { SessionInfo } from '../interfaces/session-info.interface';
 import { JwtTokenService } from './jwt-token.service';
 import { AuthTokens } from '../interfaces/token-payload.interface';
+import { CacheService } from '../../cache/cache.service';
+
+type SessionCloseReason = NonNullable<Session['closeReason']>;
+
+const ACTIVITY_THROTTLE_TTL_MS = 5 * 60 * 1000; // 5 minutos
 
 @Injectable()
 export class SessionService {
@@ -18,6 +23,7 @@ export class SessionService {
     @InjectRepository(Session)
     private readonly sessionRepository: Repository<Session>,
     private readonly jwtTokenService: JwtTokenService,
+    private readonly cacheService: CacheService,
   ) {}
 
   /**
@@ -82,7 +88,11 @@ export class SessionService {
   /**
    * Cerrar sesión específica
    */
-  async closeSession(sessionId: string, userId?: string): Promise<void> {
+  async closeSession(
+    sessionId: string,
+    userId?: string,
+    reason: SessionCloseReason = 'LOGOUT',
+  ): Promise<void> {
     const where: any = { id: sessionId, isActive: true };
     if (userId) {
       where.userId = userId;
@@ -95,7 +105,10 @@ export class SessionService {
     }
 
     session.isActive = false;
+    session.closedAt = new Date();
+    session.closeReason = reason;
     await this.sessionRepository.save(session);
+    await this.cacheService.del(`session:activity:${sessionId}`);
   }
 
   /**
@@ -104,16 +117,21 @@ export class SessionService {
   async closeAllSessions(
     userId: string,
     exceptSessionId?: string,
+    reason: SessionCloseReason = 'ALL_CLOSED',
   ): Promise<void> {
     const sessions = await this.sessionRepository.find({
       where: { userId, isActive: true },
     });
 
+    const now = new Date();
     for (const session of sessions) {
       if (exceptSessionId && session.id === exceptSessionId) {
         continue;
       }
       session.isActive = false;
+      session.closedAt = now;
+      session.closeReason = reason;
+      await this.cacheService.del(`session:activity:${session.id}`);
     }
 
     await this.sessionRepository.save(sessions);
@@ -130,7 +148,7 @@ export class SessionService {
         expiresAt: LessThan(new Date()),
         ...(userId ? { userId } : {}),
       },
-      { isActive: false },
+      { isActive: false, closedAt: new Date(), closeReason: 'EXPIRED' },
     );
     return result.affected ?? 0;
   }
@@ -154,7 +172,7 @@ export class SessionService {
         refreshToken: this.hashToken(refreshToken),
         isActive: true,
       },
-      { isActive: false },
+      { isActive: false, closedAt: new Date(), closeReason: 'LOGOUT' },
     );
     return (result.affected ?? 0) > 0;
   }
@@ -163,10 +181,18 @@ export class SessionService {
    * Actualizar última actividad de la sesión
    */
   async updateSessionActivity(sessionId: string): Promise<void> {
+    // Throttle: máximo una escritura cada 5 minutos por sesión
+    const throttleKey = `session:activity:${sessionId}`;
+    const lastUpdate = await this.cacheService.get(throttleKey);
+    if (lastUpdate) {
+      return;
+    }
+
     await this.sessionRepository.update(
       { id: sessionId, isActive: true },
       { lastActivityAt: new Date() },
     );
+    await this.cacheService.set(throttleKey, Date.now(), ACTIVITY_THROTTLE_TTL_MS);
   }
 
   /**
@@ -184,6 +210,8 @@ export class SessionService {
     // Verificar que no haya expirado
     if (new Date() > session.expiresAt) {
       session.isActive = false;
+      session.closedAt = new Date();
+      session.closeReason = 'EXPIRED';
       await this.sessionRepository.save(session);
       return false;
     }
@@ -223,6 +251,8 @@ export class SessionService {
       // Verificar que la sesión no haya expirado
       if (new Date() > session.expiresAt) {
         session.isActive = false;
+        session.closedAt = new Date();
+        session.closeReason = 'EXPIRED';
         await this.sessionRepository.save(session);
         throw new UnauthorizedException('Sesión expirada');
       }

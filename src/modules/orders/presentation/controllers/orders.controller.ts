@@ -96,8 +96,9 @@ export class OrdersController {
   pay(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: RegisterPaymentDto,
+    @CurrentUser() user: User,
   ): Promise<OrderPayment> {
-    return this.orders.registerPayment(id, dto);
+    return this.orders.registerPayment(id, dto, user);
   }
 
   /**

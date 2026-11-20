@@ -169,7 +169,11 @@ describe('AuthService - Password Reset Flow', () => {
       expect(result.success).toBe(true);
       expect(userRepository.save).toHaveBeenCalled();
       expect(mockUser.passwordHash).not.toBe('old-hash');
-      expect(sessionService.closeAllSessions).toHaveBeenCalledWith('user-123');
+      expect(sessionService.closeAllSessions).toHaveBeenCalledWith(
+        'user-123',
+        undefined,
+        'PASSWORD_RESET',
+      );
       expect(emailService.sendPasswordChangedConfirmationEmail).toHaveBeenCalledWith(
         'juan@example.com',
         'Juan Pérez',

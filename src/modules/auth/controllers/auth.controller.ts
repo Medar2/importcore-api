@@ -70,7 +70,7 @@ export class AuthController {
   async logout(@CurrentUser() user: User, @Req() _req: Request) {
     // Extraer sessionId del token (si está disponible)
     // Por ahora, cerramos todas las sesiones del usuario
-    await this.sessionService.closeAllSessions(user.id);
+    await this.sessionService.closeAllSessions(user.id, undefined, 'LOGOUT');
   }
 
   /**

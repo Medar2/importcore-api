@@ -19,7 +19,10 @@ function setup(over: { customer?: object; existing?: object | null; seq?: string
     allocate: jest.fn(() =>
       over.seq instanceof Error ? Promise.reject(over.seq) : Promise.resolve(over.seq ?? '7')),
   };
-  const audit = { logAccess: jest.fn(() => Promise.resolve()) };
+  const audit = {
+    logAccess: jest.fn(() => Promise.resolve()),
+    logChange: jest.fn(() => Promise.resolve()),
+  };
   const provider = new MockECfProvider();
   jest.spyOn(provider, 'emit');
 

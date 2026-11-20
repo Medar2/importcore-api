@@ -48,6 +48,21 @@ export class ChangeOrderStatusUseCase {
       method: 'PATCH',
     });
 
+    await this.audit.logChange({
+      userId: user.id,
+      userEmail: user.person?.email ?? user.username,
+      organizationId: user.organizationId ?? undefined,
+      entity: 'Order',
+      entityId: orderId,
+      action: 'UPDATE',
+      before: { status: from },
+      after: { status: to },
+      metadata: { orderNumber: order.orderNumber, notes: notes?.trim() },
+      ipAddress,
+      method: 'PATCH',
+      endpoint: 'PATCH /api/orders/:id/status',
+    });
+
     return saved;
   }
 }

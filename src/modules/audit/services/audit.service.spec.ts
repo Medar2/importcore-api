@@ -341,4 +341,74 @@ describe('AuditService', () => {
       expect(stats.byResource).toEqual({});
     });
   });
+
+  describe('logChange', () => {
+    it('should log an UPDATE change with computed diff', async () => {
+      const mockAuditLog = { id: 'audit-change-1' };
+      mockRepository.create.mockReturnValue(mockAuditLog);
+      mockRepository.save.mockResolvedValue(mockAuditLog);
+
+      await service.logChange({
+        userId: 'user-1',
+        userEmail: 'op@example.com',
+        entity: 'Order',
+        entityId: 'order-1',
+        action: 'UPDATE',
+        before: { status: 'PENDING', totalUsd: '100.00', notes: 'a' },
+        after: { status: 'DISPATCHED', totalUsd: '100.00', notes: 'b' },
+      });
+
+      expect(mockRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'CHANGE_UPDATE',
+          resource: 'Order',
+          resourceId: 'order-1',
+          result: 'success',
+        }),
+      );
+      const created = mockRepository.create.mock.calls[0][0];
+      expect(created.metadata.changes).toEqual({
+        status: { from: 'PENDING', to: 'DISPATCHED' },
+        notes: { from: 'a', to: 'b' },
+      });
+      expect(created.metadata.before).toEqual({
+        status: 'PENDING',
+        totalUsd: '100.00',
+        notes: 'a',
+      });
+      expect(mockRepository.save).toHaveBeenCalledWith(mockAuditLog);
+    });
+
+    it('should log a CREATE change without diff', async () => {
+      mockRepository.create.mockReturnValue({ id: 'x' });
+      mockRepository.save.mockResolvedValue({ id: 'x' });
+
+      await service.logChange({
+        entity: 'OrderPayment',
+        entityId: 'pay-1',
+        action: 'CREATE',
+        after: { amountUsd: '50.00' },
+      });
+
+      const created = mockRepository.create.mock.calls[0][0];
+      expect(created.action).toBe('CHANGE_CREATE');
+      expect(created.userId).toBeNull();
+      expect(created.metadata.changes).toBeUndefined();
+      expect(created.metadata.after).toEqual({ amountUsd: '50.00' });
+    });
+
+    it('should not throw when logging fails', async () => {
+      mockRepository.create.mockReturnValue({});
+      mockRepository.save.mockRejectedValue(new Error('db down'));
+      const errorSpy = jest
+        .spyOn(service['logger'], 'error')
+        .mockImplementation();
+
+      await expect(
+        service.logChange({ entity: 'Order', action: 'DELETE' }),
+      ).resolves.not.toThrow();
+      expect(errorSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+  });
 });

@@ -4,6 +4,7 @@ import { OrdersService } from './orders.service';
 import { Order } from '../../entities/order.entity';
 import { OrderPayment } from '../../entities/order-payment.entity';
 import { Quote } from '../../../landed-cost/entities/quote.entity';
+import { AuditService } from '../../../audit/services/audit.service';
 
 describe('OrdersService - tracking', () => {
   let service: OrdersService;
@@ -35,6 +36,10 @@ describe('OrdersService - tracking', () => {
         {
           provide: getRepositoryToken(Quote),
           useValue: mockQuoteRepo,
+        },
+        {
+          provide: AuditService,
+          useValue: { logChange: jest.fn(), logAccess: jest.fn() },
         },
       ],
     }).compile();

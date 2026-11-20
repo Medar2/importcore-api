@@ -65,4 +65,17 @@ export class Session extends BaseEntity {
   // Última actividad
   @Column({ name: 'last_activity_at', type: 'timestamp' })
   lastActivityAt: Date;
+
+  // Cierre de sesión (auditoría de tiempo en sesión)
+  @Column({ name: 'closed_at', type: 'timestamp', nullable: true })
+  closedAt: Date | null;
+
+  @Column({ name: 'close_reason', type: 'varchar', length: 50, nullable: true })
+  closeReason:
+    | 'LOGOUT'
+    | 'EXPIRED'
+    | 'ALL_CLOSED'
+    | 'PASSWORD_RESET'
+    | 'REVOKED'
+    | null;
 }

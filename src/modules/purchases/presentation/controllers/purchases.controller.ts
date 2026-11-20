@@ -11,6 +11,8 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
+import type { User } from '../../../security/entities/user.entity';
 import { PermissionsGuard } from '../../../rbac/guards/permissions.guard';
 import { RequirePermission } from '../../../rbac/decorators/require-permission.decorator';
 import { PurchasesService } from '../../application/services/purchases.service';
@@ -58,8 +60,9 @@ export class PurchasesController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdatePurchaseOrderDto,
+    @CurrentUser() user: User,
   ): Promise<PurchaseOrder> {
-    return this.service.update(id, dto);
+    return this.service.update(id, dto, user);
   }
 
   @Post('orders/:id/payments')
@@ -67,7 +70,8 @@ export class PurchasesController {
   pay(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: RegisterPurchasePaymentDto,
+    @CurrentUser() user: User,
   ): Promise<PurchasePayment> {
-    return this.service.registerPayment(id, dto);
+    return this.service.registerPayment(id, dto, user);
   }
 }

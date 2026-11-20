@@ -64,6 +64,7 @@ export class DispatchService {
     }
     const overrideUsed = decision.kind === 'OVERRIDE';
 
+    const previousStatus = order.status;
     order.status = 'DISPATCHED';
     await this.orders.setStatus(order.id, 'DISPATCHED');
 
@@ -85,6 +86,25 @@ export class DispatchService {
       ipAddress,
       endpoint: 'POST /api/orders/:id/dispatch',
       method: 'POST',
+    });
+
+    await this.audit.logChange({
+      userId: user.id,
+      userEmail: user.person?.email ?? user.username,
+      organizationId: user.organizationId ?? undefined,
+      entity: 'Order',
+      entityId: order.id,
+      action: 'UPDATE',
+      before: { status: previousStatus },
+      after: { status: 'DISPATCHED' },
+      metadata: {
+        orderNumber: order.orderNumber,
+        overrideUsed,
+        overrideReason: overrideUsed ? overrideReason : undefined,
+      },
+      ipAddress,
+      method: 'POST',
+      endpoint: 'POST /api/orders/:id/dispatch',
     });
 
     return {

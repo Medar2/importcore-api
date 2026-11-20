@@ -85,6 +85,26 @@ export class EmitOrderInvoiceUseCase {
       result: doc.status === 'REJECTED' ? 'failure' : 'success',
       metadata: { encf: doc.encf, orderNumber: order.orderNumber, totalDop: doc.totalDop, provider: doc.provider },
     });
+
+    await this.audit.logChange({
+      userId: user.id,
+      userEmail: user.person?.email ?? user.username,
+      organizationId: user.organizationId ?? undefined,
+      entity: 'FiscalDocument',
+      entityId: doc.id,
+      action: 'CREATE',
+      after: {
+        encf: doc.encf,
+        ecfType: doc.ecfType,
+        orderId: doc.orderId,
+        customerId: doc.customerId,
+        status: doc.status,
+        totalUsd: doc.totalUsd,
+        totalDop: doc.totalDop,
+        provider: doc.provider,
+      },
+      metadata: { orderNumber: order.orderNumber },
+    });
     return doc;
   }
 

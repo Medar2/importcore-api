@@ -16,6 +16,8 @@ import {
 } from '../../domain/order-balance.calculator';
 import type { OrderBalance } from '../../domain/order-balance.calculator';
 import { convertToUsd } from '../../../currency/domain/convert-to-usd';
+import { AuditService } from '../../../audit/services/audit.service';
+import type { User } from '../../../security/entities/user.entity';
 
 export type { OrderBalance };
 
@@ -65,6 +67,7 @@ export class OrdersService {
     private readonly payments: Repository<OrderPayment>,
     @InjectRepository(Quote)
     private readonly quotes: Repository<Quote>,
+    private readonly audit: AuditService,
   ) {}
 
   async create(dto: CreateOrderDto): Promise<Order> {
@@ -162,12 +165,16 @@ export class OrdersService {
     return computeOrderBalance(order.totalUsd, paid?.total ?? 0);
   }
 
-  async registerPayment(orderId: string, dto: RegisterPaymentDto): Promise<OrderPayment> {
+  async registerPayment(
+    orderId: string,
+    dto: RegisterPaymentDto,
+    user?: User,
+  ): Promise<OrderPayment> {
     const currency = dto.currency ?? 'USD';
     const conv = convertToUsd(dto.amount, currency, dto.exchangeRateToUsd);
     if (!conv.ok) throw new BadRequestException(conv.error);
 
-    return this.orders.manager.transaction(async (m) => {
+    const payment = await this.orders.manager.transaction(async (m) => {
       const order = await m.findOne(Order, {
         where: { id: orderId },
         lock: { mode: 'pessimistic_write' },
@@ -203,6 +210,28 @@ export class OrdersService {
         }),
       );
     });
+
+    await this.audit.logChange({
+      userId: user?.id,
+      userEmail: user?.person?.email ?? user?.username,
+      organizationId: user?.organizationId ?? undefined,
+      entity: 'OrderPayment',
+      entityId: payment.id,
+      action: 'CREATE',
+      after: {
+        orderId: payment.orderId,
+        currency: payment.currency,
+        amount: payment.amount,
+        amountUsd: payment.amountUsd,
+        exchangeRate: payment.exchangeRate,
+        method: payment.method,
+        reference: payment.reference,
+        paidAt: payment.paidAt,
+      },
+      metadata: { orderId },
+    });
+
+    return payment;
   }
 
   async setStatus(id: string, status: Order['status']): Promise<Order> {

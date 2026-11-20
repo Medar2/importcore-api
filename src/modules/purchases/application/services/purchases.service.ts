@@ -15,6 +15,8 @@ import {
   RegisterPurchasePaymentDto,
   UpdatePurchaseOrderDto,
 } from '../../presentation/dtos/purchase.dto';
+import { AuditService } from '../../../audit/services/audit.service';
+import type { User } from '../../../security/entities/user.entity';
 
 export interface PurchaseBalance {
   totalUsd: string;
@@ -29,6 +31,7 @@ export class PurchasesService {
     private readonly pos: Repository<PurchaseOrder>,
     @InjectRepository(PurchasePayment)
     private readonly payments: Repository<PurchasePayment>,
+    private readonly audit: AuditService,
   ) {}
 
   create(dto: CreatePurchaseOrderDto): Promise<PurchaseOrder> {
@@ -64,11 +67,21 @@ export class PurchasesService {
     return po;
   }
 
-  async update(id: string, dto: UpdatePurchaseOrderDto): Promise<PurchaseOrder> {
+  async update(
+    id: string,
+    dto: UpdatePurchaseOrderDto,
+    user?: User,
+  ): Promise<PurchaseOrder> {
     const po = await this.findById(id);
     if (po.status === 'RECEIVED' || po.status === 'CANCELLED') {
       throw new ConflictException('No se puede editar una OC cerrada');
     }
+    const before = {
+      status: po.status,
+      totalUsd: po.totalUsd,
+      expectedDate: po.expectedDate,
+      notes: po.notes,
+    };
     Object.assign(po, {
       status: dto.status ?? po.status,
       totalUsd: dto.totalUsd ?? po.totalUsd,
@@ -76,7 +89,26 @@ export class PurchasesService {
       expectedDate: dto.expectedDate ?? po.expectedDate,
       notes: dto.notes ?? po.notes,
     });
-    return this.pos.save(po);
+    const saved = await this.pos.save(po);
+
+    await this.audit.logChange({
+      userId: user?.id,
+      userEmail: user?.person?.email ?? user?.username,
+      organizationId: user?.organizationId ?? undefined,
+      entity: 'PurchaseOrder',
+      entityId: id,
+      action: 'UPDATE',
+      before,
+      after: {
+        status: saved.status,
+        totalUsd: saved.totalUsd,
+        expectedDate: saved.expectedDate,
+        notes: saved.notes,
+      },
+      metadata: { poNumber: saved.poNumber },
+    });
+
+    return saved;
   }
 
   async balance(id: string): Promise<PurchaseBalance> {
@@ -99,6 +131,7 @@ export class PurchasesService {
   async registerPayment(
     id: string,
     dto: RegisterPurchasePaymentDto,
+    user?: User,
   ): Promise<PurchasePayment> {
     const po = await this.findById(id);
     if (po.status === 'CANCELLED' || po.status === 'RECEIVED') {
@@ -109,7 +142,7 @@ export class PurchasesService {
     const conv = convertToUsd(dto.amount, currency, dto.exchangeRateToUsd);
     if (!conv.ok) throw new BadRequestException(conv.error);
 
-    return this.payments.save(
+    const payment = await this.payments.save(
       this.payments.create({
         purchaseOrderId: id,
         currency,
@@ -122,6 +155,28 @@ export class PurchasesService {
         notes: dto.notes ?? null,
       }),
     );
+
+    await this.audit.logChange({
+      userId: user?.id,
+      userEmail: user?.person?.email ?? user?.username,
+      organizationId: user?.organizationId ?? undefined,
+      entity: 'PurchasePayment',
+      entityId: payment.id,
+      action: 'CREATE',
+      after: {
+        purchaseOrderId: payment.purchaseOrderId,
+        currency: payment.currency,
+        amount: payment.amount,
+        amountUsd: payment.amountUsd,
+        exchangeRate: payment.exchangeRate,
+        method: payment.method,
+        reference: payment.reference,
+        paidAt: payment.paidAt,
+      },
+      metadata: { purchaseOrderId: id, poNumber: po.poNumber },
+    });
+
+    return payment;
   }
 
   private nextPoNumber(): string {

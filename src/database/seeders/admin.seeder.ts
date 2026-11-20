@@ -582,11 +582,7 @@ export class AdminSeeder {
         name: 'Contador',
         description:
           'Tesorería, cuentas por cobrar/pagar, reportes DGII 606/607/608 y contabilidad',
-        permissionPrefixes: [
-          'IMPORTCORE.',
-          'REPORTES.',
-          'ADMINISTRACION.AUDITORIA.',
-        ],
+        permissionPrefixes: ['IMPORTCORE.', 'REPORTES.'],
       },
       {
         name: 'Visualizador',
@@ -603,12 +599,8 @@ export class AdminSeeder {
       {
         name: 'Gerencia',
         description:
-          'Solo lectura de operación, catálogo, logística, fiscal y auditoría',
-        permissionPrefixes: [
-          'IMPORTCORE.',
-          'REPORTES.',
-          'ADMINISTRACION.AUDITORIA.',
-        ],
+          'Solo lectura de operación, catálogo, logística y fiscal',
+        permissionPrefixes: ['IMPORTCORE.', 'REPORTES.'],
         readOnly: true,
       },
       {
@@ -687,7 +679,6 @@ export class AdminSeeder {
           'IMPORTCORE.VENDORS.READ',
           'REPORTES.USUARIOS.VER',
           'REPORTES.ACTIVIDAD.VER',
-          'ADMINISTRACION.AUDITORIA.VER',
         ],
       },
       {

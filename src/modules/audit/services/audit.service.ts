@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuditLog } from '../entities/audit-log.entity';
+import { diffEntities } from '../utils/entity-diff';
 
 export interface AccessEvent {
   userId: string;
@@ -49,6 +50,27 @@ export interface AuthEvent {
   metadata?: Record<string, any>;
   ipAddress?: string;
   userAgent?: string;
+}
+
+export interface ChangeEvent {
+  userId?: string;
+  userEmail?: string;
+  organizationId?: string;
+  /** Entidad auditada, ej. 'Order', 'Customer', 'FiscalDocument' */
+  entity: string;
+  entityId?: string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE';
+  /** Valores antes del cambio (para UPDATE/DELETE) */
+  before?: Record<string, any> | null;
+  /** Valores después del cambio (para CREATE/UPDATE) */
+  after?: Record<string, any> | null;
+  /** Diff calculado con diffEntities(); si no se provee y hay before+after, se calcula */
+  changes?: Record<string, { from: unknown; to: unknown }> | null;
+  metadata?: Record<string, any>;
+  ipAddress?: string;
+  userAgent?: string;
+  method?: string;
+  endpoint?: string;
 }
 
 export interface AuditFilters {
@@ -168,6 +190,52 @@ export class AuditService {
     } catch (error) {
       this.logger.error(
         `Failed to log auth event: ${error.message}`,
+        error.stack,
+      );
+    }
+  }
+
+  /**
+   * Registra un cambio sobre una entidad de negocio (CREATE/UPDATE/DELETE).
+   * El diff before/after se guarda en metadata.changes.
+   * Método append-only.
+   */
+  async logChange(event: ChangeEvent): Promise<void> {
+    try {
+      const changes =
+        event.changes !== undefined
+          ? event.changes
+          : diffEntities(event.before, event.after);
+
+      const auditLog = this.auditLogRepository.create({
+        timestamp: new Date(),
+        userId: event.userId ?? null,
+        userEmail: event.userEmail ?? null,
+        organizationId: event.organizationId ?? null,
+        action: `CHANGE_${event.action}`,
+        resource: event.entity,
+        resourceId: event.entityId ?? null,
+        result: 'success',
+        metadata: {
+          ...(event.metadata || {}),
+          changes: changes ?? undefined,
+          before: event.action !== 'CREATE' ? event.before ?? undefined : undefined,
+          after: event.action !== 'DELETE' ? event.after ?? undefined : undefined,
+        },
+        ipAddress: event.ipAddress,
+        userAgent: event.userAgent,
+        method: event.method,
+        endpoint: event.endpoint,
+      });
+
+      await this.auditLogRepository.save(auditLog);
+
+      this.logger.debug(
+        `Change logged: ${event.action} on ${event.entity}/${event.entityId} by ${event.userEmail ?? 'system'}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to log change event: ${error.message}`,
         error.stack,
       );
     }

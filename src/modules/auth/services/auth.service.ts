@@ -502,7 +502,11 @@ export class AuthService {
     await this.userRepository.save(user);
 
     // Cerrar todas las sesiones activas anteriores por seguridad
-    await this.sessionService.closeAllSessions(user.id);
+    await this.sessionService.closeAllSessions(
+      user.id,
+      undefined,
+      'PASSWORD_RESET',
+    );
 
     // Enviar confirmación por correo electrónico
     const targetEmail = user.person?.email || payload.email;

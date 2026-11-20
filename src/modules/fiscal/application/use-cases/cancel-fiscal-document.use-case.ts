@@ -37,6 +37,7 @@ export class CancelFiscalDocumentUseCase {
       throw new BadGatewayException(`El proveedor rechazo la anulacion: ${result.message ?? 'sin detalle'}`);
     }
 
+    const previousStatus = doc.status;
     Object.assign(doc, {
       status: 'CANCELLED',
       cancellationType: dto.cancellationType,
@@ -56,6 +57,22 @@ export class CancelFiscalDocumentUseCase {
       result: 'success',
       reason: dto.reason,
       metadata: { encf: doc.encf, cancellationType: dto.cancellationType },
+    });
+
+    await this.audit.logChange({
+      userId: user.id,
+      userEmail: user.person?.email ?? user.username,
+      organizationId: user.organizationId ?? undefined,
+      entity: 'FiscalDocument',
+      entityId: doc.id,
+      action: 'UPDATE',
+      before: { status: previousStatus },
+      after: {
+        status: 'CANCELLED',
+        cancellationType: dto.cancellationType,
+        cancellationReason: dto.reason.trim(),
+      },
+      metadata: { encf: doc.encf },
     });
     return saved;
   }

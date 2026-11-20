@@ -12,11 +12,15 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { RequirePermission } from '../../rbac/decorators/require-permission.decorator';
 import { AuditService, AuditFilters } from '../services/audit.service';
+import { SessionAuditService } from '../services/session-audit.service';
 
 @Controller('audit')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class AuditController {
-  constructor(private readonly auditService: AuditService) {}
+  constructor(
+    private readonly auditService: AuditService,
+    private readonly sessionAuditService: SessionAuditService,
+  ) {}
 
   /**
    * GET /audit/logs
@@ -163,5 +167,71 @@ export class AuditController {
         stats,
       },
     };
+  }
+
+  /**
+   * GET /audit/sessions
+   * Listar sesiones (activas e históricas) con tiempo en sesión
+   */
+  @Get('sessions')
+  @RequirePermission('ADMINISTRACION.AUDITORIA.VER')
+  async listSessions(
+    @Query('userId') userId?: string,
+    @Query('isActive') isActive?: string,
+    @Query('closeReason') closeReason?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const result = await this.sessionAuditService.listSessions({
+      userId,
+      isActive:
+        isActive === 'true' ? true : isActive === 'false' ? false : undefined,
+      closeReason,
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+    });
+
+    return { success: true, ...result };
+  }
+
+  /**
+   * GET /audit/sessions/user/:userId
+   * Historial de sesiones de un usuario
+   */
+  @Get('sessions/user/:userId')
+  @RequirePermission('ADMINISTRACION.AUDITORIA.VER')
+  async getUserSessions(
+    @Param('userId') userId: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const sessions = await this.sessionAuditService.getUserSessions(userId, {
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+    });
+
+    return { success: true, data: sessions, count: sessions.length };
+  }
+
+  /**
+   * GET /audit/sessions/summary
+   * Resumen de tiempo en sesión por usuario
+   */
+  @Get('sessions/summary')
+  @RequirePermission('ADMINISTRACION.AUDITORIA.VER')
+  async getSessionsSummary(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const summary = await this.sessionAuditService.getSummary({
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+    });
+
+    return { success: true, data: summary };
   }
 }
